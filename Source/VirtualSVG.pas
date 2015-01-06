@@ -116,7 +116,9 @@ type
     procedure StructureChange(Node: PVirtualNode; Reason: TChangeReason); virtual;  
   public
     function AddChild(Parent: PVirtualNode; UserDataSize : Integer = 0;
-      UserData: Pointer = nil): PVirtualNode; virtual;
+      UserData: Pointer = nil; CopyData:Boolean = False): PVirtualNode; overload; virtual;
+    function AddChild(Parent: PVirtualNode; UserDataSize : Integer; const UserData): PVirtualNode; overload; virtual;
+    
     procedure AfterConstruction; override;
     procedure DeleteChildren(Node: PVirtualNode; ResetHasChildren: Boolean = False);
     procedure DeleteNode(Node: PVirtualNode; Reindex: Boolean = True);
@@ -154,7 +156,7 @@ end;
 
 
 function TSVG.AddChild(Parent: PVirtualNode; UserDataSize : Integer;
-  UserData: Pointer): PVirtualNode;
+  UserData: Pointer; CopyData:Boolean): PVirtualNode;
 
 // Adds a new node to the given parent node. This is simply done by increasing the child count of the
 // parent node. If Parent is nil then the new node is added as (last) top level node.
@@ -195,7 +197,10 @@ begin
       if UserDataSize >= SizeOf(Pointer) then
       begin
         NodeData := Pointer(PByte(@Result.Data) + FTotalInternalDataSize);
-        NodeData^ := UserData;
+        if CopyData then
+          Move(UserData^,NodeData^, UserDataSize)
+        else
+          NodeData^ := UserData;
         Include(Result.States, vsOnFreeNodeCallRequired);
       end
       else
@@ -224,6 +229,11 @@ begin
   //else
     //Result := nil;
 
+end;
+
+function TSVG.AddChild(Parent: PVirtualNode; UserDataSize : Integer; const UserData): PVirtualNode;
+begin
+  Result := AddChild(Parent, UserDataSize, @UserData, True);
 end;
 
 procedure TSVG.AdjustTotalCount(Node: PVirtualNode; Value: Integer;
